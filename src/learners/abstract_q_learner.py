@@ -226,7 +226,8 @@ class AbstractQLearner:
             for t in range(batch.max_seq_length):
                 target_agent_outs, h = self.target_mac.forward(batch, t=t)
                 target_mac_out.append(target_agent_outs)
-        
+            print(f"{h.shape=}")
+
         # Calcullate dormant ratio
         batch_mean = torch.abs(h).mean(dim=0) # should be [h_dim]
         batch_mean /= batch_mean.sum() # h should be [batch, h_dim]
