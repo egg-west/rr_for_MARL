@@ -295,7 +295,7 @@ class AbstractQLearner:
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             mask_elems = mask.sum().item()
             train_stats = {}
-            train_stats["inspect/h_variance"] = h_var.item()
+            train_stats["inspect/h_variance"] = h_var
             train_stats["train/loss"] = loss.item()
             train_stats["train/grad_norm"] = grad_norm.item()
             train_stats["train/td_error_abs"] = masked_td_error.abs().sum().item() / mask_elems
