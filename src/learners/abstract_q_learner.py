@@ -139,7 +139,7 @@ class AbstractQLearner:
             )
 
             #################################### update the agent embedding
-            TEST_SAMPLE_NUMBER = 10
+            # TEST_SAMPLE_NUMBER = 10
             random_agent_indices_bias = torch.LongTensor(np.random.randint(low=1, high=self.args.n_agents, size=self.args.n_agents)).to(batch.device)
             # print(f"{self.agent_indices.shape=}, {random_agent_indices_bias.shape=}")# [8]
             random_agent_indices = (self.agent_indices + random_agent_indices_bias).unsqueeze(0).unsqueeze(0).tile([bs, seq_len, 1]) % self.args.n_agents
@@ -214,6 +214,7 @@ class AbstractQLearner:
 
         self.target_mac.init_hidden(batch.batch_size)
 
+        h_var = None
         if self.args.use_agent_encoder:
             agent_embedding = self.agent_encoder(self.agent_indices).unsqueeze(0).tile([bs, 1, 1])
             for t in range(batch.max_seq_length):
@@ -223,10 +224,13 @@ class AbstractQLearner:
             # for t in range(batch.max_seq_length):
             #     target_agent_outs, _ = self.target_mac.forward(batch, t=t)
             #     target_mac_out.append(target_agent_outs)
+            h_list = []
             for t in range(batch.max_seq_length):
                 target_agent_outs, h = self.target_mac.forward(batch, t=t)
                 target_mac_out.append(target_agent_outs)
-            print(f"{h.shape=}")
+                h_list.append(h.detach())
+            h_var = torch.stack(h_list).var(dim=0).mean().item()
+            # print(f"{h.shape=}") # [256, 64]
 
         # Calcullate dormant ratio
         batch_mean = torch.abs(h).mean(dim=0) # should be [h_dim]
@@ -291,6 +295,7 @@ class AbstractQLearner:
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             mask_elems = mask.sum().item()
             train_stats = {}
+            train_stats["inspect/h_variance"] = h_var.item()
             train_stats["train/loss"] = loss.item()
             train_stats["train/grad_norm"] = grad_norm.item()
             train_stats["train/td_error_abs"] = masked_td_error.abs().sum().item() / mask_elems
