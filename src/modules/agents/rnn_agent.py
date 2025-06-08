@@ -1,8 +1,9 @@
 # code adapted from https://github.com/wendelinboehmer/dcg
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 
 class RNNAgent(nn.Module):
     def __init__(self, input_shape, args):
@@ -26,7 +27,9 @@ class RNNAgent(nn.Module):
         if self.args.use_rnn:
             h = self.rnn(x, h_in)
         else:
-            h = F.relu(self.rnn(x))
+            h = self.rnn(x)
+            noise = torch.randn(h.size()) * np.sqrt(0.15)
+            F.relu(h + noise)
         q = self.fc2(h)
         return q, h
 

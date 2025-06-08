@@ -49,18 +49,18 @@ class AbstractQLearner:
 
         # state_dim = int(np.prod(args.state_shape))
         # joint_action_dim = int(args.n_actions * args.n_agents)
-        if args.use_agent_encoder:
-            self.agent_forward_model = ProbabilisticForwardModel(
-                args.observation_embedding_dim,
-                args.agent_embedding_dim,
-                [int(args.n_actions)],
-                256
-            ).to(args.device)
-            self.AFM_optimiser = Adam(params=self.agent_forward_model.parameters(), lr=args.lr)
-            self.agent_encoder = BaseTaskEncoder(self.args.n_agents + 3, self.args.agent_embedding_dim).to(args.device)
-            self.AE_optimiser = Adam(params=self.agent_encoder.parameters(), lr=args.lr)
+        # if args.use_agent_encoder:
+        #     self.agent_forward_model = ProbabilisticForwardModel(
+        #         args.observation_embedding_dim,
+        #         args.agent_embedding_dim,
+        #         [int(args.n_actions)],
+        #         256
+        #     ).to(args.device)
+        #     self.AFM_optimiser = Adam(params=self.agent_forward_model.parameters(), lr=args.lr)
+        #     self.agent_encoder = BaseTaskEncoder(self.args.n_agents + 3, self.args.agent_embedding_dim).to(args.device)
+        #     self.AE_optimiser = Adam(params=self.agent_encoder.parameters(), lr=args.lr)
 
-            self.agent_indices = torch.arange(args.n_agents).to(args.device)
+        #     self.agent_indices = torch.arange(args.n_agents).to(args.device)
 
         # a little wasteful to deepcopy (e.g. duplicates action selector), but should work for any MAC
         self.target_mac = copy.deepcopy(mac)
@@ -110,63 +110,6 @@ class AbstractQLearner:
         bs = batch.batch_size
         seq_len = int(batch["task_indices_global"].shape[1] - 1)
 
-        if self.args.use_agent_encoder:
-            #print(f"for agent encoder: {task_embedding.shape=}")
-            agent_indices = self.agent_indices.unsqueeze(0).unsqueeze(0).tile([bs, seq_len, 1])
-            #print(f"{agent_indices.shape=}") # expect [32, seq_len, 8] # [32, 68, 8]
-            agent_embedding = self.agent_encoder(agent_indices).reshape(-1, self.args.n_agents, self.args.agent_embedding_dim)
-            #print(f"{agent_embedding.shape=}") # expect [32 * seq_len, 8, 64] # [2176, 8, 64]
-            onehot_actions = F.one_hot(batch["actions"][:, :-1]).squeeze(-2).to(batch.device) # [32, 66, 8, 14]
-            agent_action = onehot_actions.reshape((-1, self.args.n_agents, self.args.n_actions)) # [2176, 8, 14]
-            h = self.mac.observation_encode(batch["obs"][:, :-1]).reshape(bs*seq_len, self.args.n_agents, self.args.observation_embedding_dim)
-            #print(f"{h.shape=}") # [32*68, 8, 64]
-            afm_inputs = torch.cat([agent_embedding.detach(), h, agent_action], dim=2)
-            #print(f"{afm_inputs.shape=}") # 2176, 8, 206
-            predicted_next_observations, sigma = self.agent_forward_model(afm_inputs.detach())
-            # print(f"{predicted_next_observations.shape=}") # [2176, 8, 64]
-            next_h = self.mac.observation_encode(batch["obs"][:, 1:]).reshape(bs*seq_len, self.args.n_agents, self.args.observation_embedding_dim)
-            diff = (predicted_next_observations - next_h.detach()) / sigma
-            afm_loss = torch.mean(0.5 * diff.pow(2) + torch.log(sigma))
-
-            self.AFM_optimiser.zero_grad()
-            afm_loss.backward()
-            self.AFM_optimiser.step()
-            self.wandb_logger.log({
-                "SA/afm_loss":afm_loss.item(),
-                "SA/afm_diff":torch.mean(diff.pow(2)).detach().item(),
-                },
-                t_env
-            )
-
-            #################################### update the agent embedding
-            # TEST_SAMPLE_NUMBER = 10
-            random_agent_indices_bias = torch.LongTensor(np.random.randint(low=1, high=self.args.n_agents, size=self.args.n_agents)).to(batch.device)
-            # print(f"{self.agent_indices.shape=}, {random_agent_indices_bias.shape=}")# [8]
-            random_agent_indices = (self.agent_indices + random_agent_indices_bias).unsqueeze(0).unsqueeze(0).tile([bs, seq_len, 1]) % self.args.n_agents
-            #print(f"{random_agent_indices.shape=}") [32, 68, 8]
-            random_agent_embedding = self.agent_encoder(random_agent_indices).reshape(-1, self.args.n_agents, self.args.agent_embedding_dim)
-
-            #print(f"{random_agent_embedding.shape=}") # [2176, 8, 64]
-            random_afm_inputs = torch.cat([random_agent_embedding, h.detach(), agent_action], dim=2)
-            #print(f"{random_afm_inputs.shape=}") # [2176, 8, 206]
-            random_agent_predicted_next_observation, sigma = self.agent_forward_model(random_afm_inputs)
-            #print(f"{random_agent_predicted_next_observation.shape=}") # [2176, 8, 64]
-            afm_inputs = torch.cat([agent_embedding, h.detach(), agent_action], dim=2)
-            new_predicted_next_observations, sigma = self.agent_forward_model(afm_inputs)
-            diff = (new_predicted_next_observations - next_h.detach()) / sigma
-            afm_loss = torch.mean(0.5 * diff.pow(2) + torch.log(sigma))
-
-            ae_diff = torch.norm(agent_embedding.reshape(-1, agent_embedding.shape[-1]) - random_agent_embedding.reshape(-1, random_agent_embedding.shape[-1]), dim=1)
-            next_observation_diff = torch.norm(
-                new_predicted_next_observations.reshape(-1, new_predicted_next_observations.shape[-1]) - random_agent_predicted_next_observation.reshape(-1, random_agent_predicted_next_observation.shape[-1]),
-                dim=1
-            )
-            self.AE_optimiser.zero_grad()
-            ae_loss = F.mse_loss(ae_diff, next_observation_diff.detach()) + afm_loss
-            ae_loss.backward()
-            self.AE_optimiser.step()
-            self.wandb_logger.log({"SA/ae_loss":ae_loss.item()}, t_env)
-
         ####################### Update the agent
 
         # Get the relevant quantities
@@ -176,8 +119,8 @@ class AbstractQLearner:
         mask = batch["filled"][:, :-1].float()
         mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
         avail_actions = batch["avail_actions"]
-        task_indices = batch["task_indices"]#[:, :-1] # include many tasks
-        obs_dim = batch["obs"].shape[-1]
+        # task_indices = batch["task_indices"]#[:, :-1] # include many tasks
+        # obs_dim = batch["obs"].shape[-1]
 
         if self.args.standardise_rewards:
             self.rew_ms.update(rewards)
@@ -185,8 +128,8 @@ class AbstractQLearner:
 
         # Calculate estimated Q-Values
         mac_out = []
-        correlation_value = 0.0
-        corr_to_log = []
+        # correlation_value = 0.0
+        # corr_to_log = []
 
         self.mac.init_hidden(batch.batch_size)
 
