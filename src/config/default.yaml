@@ -75,6 +75,6 @@ load_step: 0 #250302 # Load model trained on this many timesteps (0 if choose ma
 local_results_path: "/tmp/marl_results" # Path for local results
 
 # --- primacy bias ---
-replay_ratio: 0.5  # 4
+replay_ratio: 1  # 4
 use_reset: False
 reset_freq: 200000
