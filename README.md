@@ -17,6 +17,8 @@ Please first edit the configuration in `src/config/default.yaml`, `src/config/en
 
 ```
 python3 src/mtrl_main.py --config=vdn --env-config=sc2 with env_args.map_name=3s5z seed=123
+python3 src/mtrl_main.py --config=vdn --env-config=sc2 with env_args.map_name=MMM2 seed=1
+
 ```
 
 # License

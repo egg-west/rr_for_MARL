@@ -26,7 +26,7 @@ agent_output_type: "q"
 #learner: "q_learner"
 learner: "abstract_q_learner"
 double_q: True
-use_rnn: True #True
+use_rnn: False #True
 mixer: "vdn"
 
 #lr: 0.001
