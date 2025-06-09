@@ -28,8 +28,8 @@ class RNNAgent(nn.Module):
             h = self.rnn(x, h_in)
         else:
             h = self.rnn(x)
-            noise = torch.randn(h.size()) * np.sqrt(0.15)
-            F.relu(h + noise)
+            # noise = torch.randn(h.size()) * np.sqrt(0.15)
+            F.relu(h)
         q = self.fc2(h)
         return q, h
 

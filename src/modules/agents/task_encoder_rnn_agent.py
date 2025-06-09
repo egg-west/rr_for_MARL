@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 from utils.nn_utils import weight_init, build_mlp
 
@@ -97,7 +98,10 @@ class TaskEncoderRNNAgent(nn.Module):
         if self.args.use_rnn:
             h = self.rnn(x, h_in)
         else:
-            h = F.relu(self.rnn(x))
+            h = self.rnn(x)
+            noise = (torch.randn(h.size()) * np.sqrt(0.1)).to(h.device)
+            h += noise
+            h = F.relu(h)
         q = self.fc2(h)
         return q, h, None
 

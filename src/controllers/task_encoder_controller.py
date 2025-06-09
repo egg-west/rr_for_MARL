@@ -49,7 +49,7 @@ class TaskEncoderMAC:
 
         #print(f"in forward: {task_indices.shape}") # before reshape: [1, 5, 1], after [5]
 
-        agent_outs, self.hidden_states, auxiliary_embedding = self.agent(observations, agent_inputs, self.hidden_states)
+        agent_outs, self.hidden_states, _ = self.agent(observations, agent_inputs, self.hidden_states)
         #print(f"{self.hidden_states.shape=}") # agent, hidden_dim
         #else:
         #    agent_outs, self.hidden_states = self.agent(observations, agent_inputs, self.hidden_states)

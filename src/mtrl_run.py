@@ -159,7 +159,7 @@ def run_sequential(args, logger):
     #         for i in range(len(EXTRAPOLATE_SPEED))]
     #train_runner_list = [r_REGISTRY["mtrl"](args=modify_env_config(args, "shoot_range", TRAIN_SHOOT_RANGE[i]), logger=logger, wandb_logger=wandb_run, env_id=i) \
     #    for i in range(len(TRAIN_SHOOT_RANGE))]
-    
+
     if args.name not in ["mappo", "ippo", "ia2c", "maa2c"]: #["vdn", "qmix", "maddpg"]:
         train_runner_list = [r_REGISTRY["mtrl"](args=args, logger=logger, wandb_logger=wandb_run, env_id=i) \
             for i in range(len(TRAIN_SHOOT_RANGE))]
@@ -206,7 +206,7 @@ def run_sequential(args, logger):
         preprocess=preprocess,
         device="cpu" if args.buffer_cpu_only else args.device,
     )
-    contrastive_replay = ContrastiveBuffer(args)
+    # contrastive_replay = ContrastiveBuffer(args)
 
     # Setup multiagent controller here
     if args.mac in ["maddpg_mac", "basic_mac_cds"]:
